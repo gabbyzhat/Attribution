@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Company>Gabbyz</Company>
+    <RepositoryUrl>https://github.com/gabbyzhat/Attribution</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gabbyzhat/Attribution</PackageProjectUrl>
+    <Copyright>Gabriel Engels 2021</Copyright>
+    <PackageLicenseExpression>MIT or Apache 2.0</PackageLicenseExpression>
+    <Description>Attribute based command-line parser.</Description>
+    <Authors>Gabriel Engels</Authors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile></DocumentationFile>
+  </PropertyGroup>
+
+</Project>
