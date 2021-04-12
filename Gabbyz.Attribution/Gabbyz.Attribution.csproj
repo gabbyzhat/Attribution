@@ -6,13 +6,23 @@
     <RepositoryUrl>https://github.com/gabbyzhat/Attribution</RepositoryUrl>
     <PackageProjectUrl>https://github.com/gabbyzhat/Attribution</PackageProjectUrl>
     <Copyright>Gabriel Engels 2021</Copyright>
-    <PackageLicenseExpression>MIT or Apache 2.0</PackageLicenseExpression>
+    <PackageLicenseExpression></PackageLicenseExpression>
     <Description>Attribute based command-line parser.</Description>
     <Authors>Gabriel Engels</Authors>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageTags>cli attribute reflection</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DocumentationFile></DocumentationFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE.md">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>
