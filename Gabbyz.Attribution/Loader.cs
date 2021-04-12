@@ -26,14 +26,17 @@ namespace Gabbyz.Attribution
 			var typeHelp = type.GetCustomAttribute<HelpAttribute>();
 			if (typeHelp != null)
 			{
-				tw.WriteLine("{0} - {1}", name, typeHelp.Text);
+				tw.WriteLine(name);
+				tw.WriteLine($"\t{typeHelp.Text}");
 			}
 			else
 			{
 				tw.WriteLine(name);
 			}
 
-			foreach(var x in type.GetMethods())
+			tw.WriteLine();
+
+			foreach(var x in type.GetMethods().Where(x => x.IsStatic))
 			{
 				var dcAttr = x.GetCustomAttribute<DefaultCommandAttribute>();
 				if (dcAttr == null)
@@ -44,13 +47,9 @@ namespace Gabbyz.Attribution
 				foreach(var y in x.GetParameters())
 				{
 					if (y.GetCustomAttribute<ParamArrayAttribute>() != null)
-					{
-						tw.Write("[{0}...]", y.Name);
-					}
+						tw.Write($"[{y.Name}...]");
 					else
-					{
-						tw.Write("{0} ", y.Name);
-					}
+						tw.Write($"{y.Name} ");
 				}
 
 				tw.WriteLine();
@@ -63,7 +62,7 @@ namespace Gabbyz.Attribution
 
 			tw.WriteLine("Commands:");
 
-			foreach(var x in type.GetMethods())
+			foreach(var x in type.GetMethods().Where(x => x.IsStatic))
 			{
 				var commandAttr = x.GetCustomAttribute<CommandAttribute>();
 
@@ -72,27 +71,30 @@ namespace Gabbyz.Attribution
 
 				var helpAttr = x.GetCustomAttribute<HelpAttribute>();
 
-				if (helpAttr != null)
-					tw.WriteLine("{0} - {1}", commandAttr.Name, helpAttr.Text);
-				else
-					tw.WriteLine(commandAttr.Name);
-
-				tw.Write("USAGE: {0} {1} ", name, commandAttr.Name);
+				tw.Write($"{commandAttr.Name} ");
 
 				foreach (var y in x.GetParameters())
 				{
-					tw.Write("{0} ", y.Name);
+					if (y.GetCustomAttribute<ParamArrayAttribute>() != null)
+						tw.Write($"[{y.Name}...]");
+					else
+						tw.Write($"{y.Name} ");
 				}
 
 				tw.WriteLine();
 
-				
+				if (helpAttr != null)
+					tw.WriteLine($"\t{helpAttr.Text}");
+
+
 			}
 
+			tw.WriteLine();
 			tw.WriteLine("Options:");
-
+			
 			foreach(var x in type.GetProperties())
 			{
+
 				var optionAttr = x.GetCustomAttribute<OptionAttribute>();
 
 				if (optionAttr == null)
@@ -122,7 +124,7 @@ namespace Gabbyz.Attribution
 				}
 			}
 
-			foreach (var x in type.GetMethods())
+			foreach (var x in type.GetMethods().Where(x => x.IsStatic))
 			{
 				var optionAttr = x.GetCustomAttribute<OptionAttribute>();
 
@@ -163,19 +165,32 @@ namespace Gabbyz.Attribution
 			}
 		}
 
-		static string ParseString(string s)
+		class Subloader
 		{
-			return s;
+			public static string ParseString(string s) => s;
+			public static byte ParseByte(string s) => byte.Parse(s);
+			public static sbyte ParseSByte(string s) => sbyte.Parse(s);
+			public static ushort ParseUShort(string s) => ushort.Parse(s);
+			public static short ParseShort(string s) => short.Parse(s);
+			public static uint ParseUInt(string s) => uint.Parse(s);
+			public static int ParseInt(string s) => int.Parse(s);
+			public static ulong ParseULong(string s) => ulong.Parse(s);
+			public static long ParseLong(string s) => long.Parse(s);
+			public static float ParseFloat(string s) => float.Parse(s);
+			public static double ParseDouble(string s) => double.Parse(s);
 		}
 
-		static bool ParseInvoke(MethodInfo method, List<string> values, Dictionary<Type, MethodInfo> parsers)
+
+
+
+		static void ParseInvoke(MethodInfo method, List<string> values, Dictionary<Type, MethodInfo> parsers)
 		{
 			var parameters = method.GetParameters();
 
 			if (parameters.Length == 0)
 			{
 				method.Invoke(null, new object[0]);
-				return true;
+				return;
 			}
 
 			var args = new object[parameters.Length];
@@ -194,35 +209,38 @@ namespace Gabbyz.Attribution
 					}
 					else
 					{
-						Console.Error.WriteLine("Error: Missing parameter: {0}", parameters[i].Name);
-						return false;
+						throw new LoaderException($"missing parameter {i+1}: {parameters[i].Name}");
 					}
+				}
+				catch(LoaderException ex)
+				{
+					throw ex;
 				}
 				catch(Exception ex)
 				{
-					Console.Error.WriteLine("Error: Parsing parameter: {0}: {1}", parameters[i].Name, ex);
-					return false;
+					throw new LoaderException($"parsing parameter #{i+1}: {parameters[i].Name}: {ex}", ex);
 				}
 			}
 
 			method.Invoke(null, args);
-
-			return true;
 		}
-		static bool ParseInvokeParams(MethodInfo method, List<string> values, Dictionary<Type, MethodInfo> parsers)
+		static void ParseInvokeParams(MethodInfo method, List<string> values, Dictionary<Type, MethodInfo> parsers)
 		{
 			var parameters = method.GetParameters();
 
 			if (parameters.Length == 0)
 			{
 				method.Invoke(null, new object[0]);
-				return true;
+				return;
 			}
 
 			var last = parameters.Last();
 
 			if (last.GetCustomAttribute<ParamArrayAttribute>() == null)
-				return ParseInvoke(method, values, parsers);
+			{
+				ParseInvoke(method, values, parsers);
+				return;
+			}
 
 			var args = new object[parameters.Length];
 
@@ -240,20 +258,22 @@ namespace Gabbyz.Attribution
 					}
 					else
 					{
-						Console.Error.WriteLine("Error: Missing parameter: {0}", parameters[i].Name);
-						return false;
+						throw new LoaderException($"missing parameter {i + 1}: {parameters[i].Name}");
 					}
+				}
+				catch (LoaderException ex)
+				{
+					throw ex;
 				}
 				catch (Exception ex)
 				{
-					Console.Error.WriteLine("Error: Parsing parameter: {0}: {1}", parameters[i].Name, ex);
-					return false;
+					throw new LoaderException($"parsing parameter #{i + 1}: {parameters[i].Name}: {ex}", ex);
 				}
 			}
 
 			var elem = last.ParameterType.GetElementType();
 			var objs = new List<object>();
-			for (var i = parameters.Length; i < values.Count; i++)
+			for (var i = parameters.Length - 1; i < values.Count; i++)
 			{
 				try
 				{
@@ -261,8 +281,7 @@ namespace Gabbyz.Attribution
 				}
 				catch (Exception ex)
 				{
-					Console.Error.WriteLine("Error: Parsing parameter: {0}: {1}", last.Name, ex);
-					return false;
+					throw new LoaderException($"parsing variadic parameter #{i - parameters.Length + 2}: {last.Name}: {ex}", ex);
 				}
 			}
 
@@ -272,8 +291,6 @@ namespace Gabbyz.Attribution
 			args[args.Length - 1] = destinationArray;
 
 			method.Invoke(null, args);
-
-			return true;
 		}
 
 		/// <summary>
@@ -283,8 +300,6 @@ namespace Gabbyz.Attribution
 		/// <param name="args">The arguments.</param>
 		public static void Main(Type type, string[] args)
 		{
-
-
 			var parsers = new Dictionary<Type, MethodInfo>();
 			var longs = new Dictionary<string, (bool, MethodInfo)>();
 			var shorts = new Dictionary<char, (bool, MethodInfo)>();
@@ -292,15 +307,15 @@ namespace Gabbyz.Attribution
 
 			var commands = new Dictionary<string, MethodInfo>();
 
-			parsers.Add(typeof(string), typeof(Loader).GetMethod("ParseString"));
-			parsers.Add(typeof(byte), typeof(byte).GetMethod("Parse"));
-			parsers.Add(typeof(sbyte), typeof(sbyte).GetMethod("Parse"));
-			parsers.Add(typeof(ushort), typeof(ushort).GetMethod("Parse"));
-			parsers.Add(typeof(short), typeof(short).GetMethod("Parse"));
-			parsers.Add(typeof(uint), typeof(uint).GetMethod("Parse"));
-			parsers.Add(typeof(int), typeof(int).GetMethod("Parse"));
-			parsers.Add(typeof(float), typeof(float).GetMethod("Parse"));
-			parsers.Add(typeof(double), typeof(double).GetMethod("Parse"));
+			parsers.Add(typeof(string), typeof(Subloader).GetMethod("ParseString"));
+			parsers.Add(typeof(byte), typeof(Subloader).GetMethod("ParseByte"));
+			parsers.Add(typeof(sbyte), typeof(Subloader).GetMethod("ParseSByte"));
+			parsers.Add(typeof(ushort), typeof(Subloader).GetMethod("ParseUShort"));
+			parsers.Add(typeof(short), typeof(Subloader).GetMethod("ParseShort"));
+			parsers.Add(typeof(uint), typeof(Subloader).GetMethod("ParseUInt"));
+			parsers.Add(typeof(int), typeof(Subloader).GetMethod("ParseInt"));
+			parsers.Add(typeof(float), typeof(Subloader).GetMethod("ParseFloat"));
+			parsers.Add(typeof(double), typeof(Subloader).GetMethod("ParseDouble"));
 
 
 			foreach (var x in type.GetMethods().Where(x => x.IsStatic))
@@ -366,12 +381,12 @@ namespace Gabbyz.Attribution
 					optionArgs.Add(arg);
 					if (optionArgs.Count == optionParams.Length)
 					{
-						if (!ParseInvoke(option, optionArgs, parsers))
-							return;
+						ParseInvoke(option, optionArgs, parsers);
+						option = null;
 					}
 					if (optionArgs.Count > optionParams.Length)
 					{
-						throw new Exception();
+						throw new LoaderException("this should never happen");
 					}
 				}
 				else if (arg == "--")
@@ -381,7 +396,7 @@ namespace Gabbyz.Attribution
 				else if (arg == "--help")
 				{
 					Help(type, Console.Out);
-					break;
+					return;
 				}
 				else if (arg.StartsWith("--"))
 				{
@@ -404,8 +419,7 @@ namespace Gabbyz.Attribution
 
 					if (option == null)
 					{
-						Console.Error.WriteLine("Error: Unrecognized long option: {0}", optionName);
-						return;
+						throw new LoaderException($"unrecognized option: --{optionName}");
 					}
 
 					if (optionValue != null)
@@ -413,15 +427,13 @@ namespace Gabbyz.Attribution
 						var parameters = option.GetParameters();
 						if (parameters.Length == 0)
 						{
-							Console.Error.WriteLine("Error: Option does not take parameters: {0}", optionName);
-							return;
+							throw new LoaderException($"option does not take parameters: --{optionName}");
 						}
 						else if (parameters.Length == 1)
 						{
 							optionArgs.Clear();
 							optionArgs.Add(optionValue);
-							if (!ParseInvoke(option, optionArgs, parsers))
-								return;
+							ParseInvoke(option, optionArgs, parsers);
 							option = null;
 						}
 						else
@@ -461,8 +473,7 @@ namespace Gabbyz.Attribution
 
 						if (option == null)
 						{
-							Console.Error.WriteLine("Error: Unrecognized short option: {0}", optionNames);
-							return;
+							throw new LoaderException($"unrecognized option: -{optionNames}");
 						}
 						else if (flag)
 						{
@@ -487,11 +498,11 @@ namespace Gabbyz.Attribution
 						{
 							var (flag, opt) = shorts.GetValueOrDefault(optionNames[0]);
 
+							if (opt == null)
+								throw new LoaderException($"unrecognized option: -{optionNames[0]}");
+
 							if (!flag)
-							{
-								Console.Error.WriteLine("Error: Only flag options allowed in a multi-set");
-								return;
-							}
+								throw new LoaderException($"only flag options allowed in a multiple set");
 
 							opt.Invoke(null, new object[] { true });
 						}
@@ -499,7 +510,12 @@ namespace Gabbyz.Attribution
 				}
 				else
 				{
-					commandArgs.Add(arg);
+					if (command == null)
+					{
+						command = arg;
+					}
+					else
+						commandArgs.Add(arg);
 				}
 
 			}
@@ -510,18 +526,19 @@ namespace Gabbyz.Attribution
 			{
 				realCommand = type.GetMethods().Where(x => x.GetCustomAttribute<DefaultCommandAttribute>() != null).FirstOrDefault();
 				if (realCommand == null)
-				{
-					Console.Error.WriteLine("Error: No command given");
-					return;
-				}
+					throw new LoaderException("no command given");
+				commandArgs.Insert(0, command);
 			}
 			else
 			{
 				realCommand = commands.GetValueOrDefault(command);
 				if (realCommand == null)
 				{
-					Console.Error.WriteLine("Error: Unrecognized command: {0}", command);
+					realCommand = type.GetMethods().Where(x => x.GetCustomAttribute<DefaultCommandAttribute>() != null).FirstOrDefault();
+					commandArgs.Insert(0, command);
 				}
+				if (realCommand == null)
+					throw new LoaderException($"unrecognized command: {command}");
 			}
 
 			ParseInvokeParams(realCommand, commandArgs, parsers);
