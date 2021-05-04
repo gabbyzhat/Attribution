@@ -47,20 +47,20 @@ namespace Gabbyz.Attribution
 				foreach(var y in x.GetParameters())
 				{
 					if (y.GetCustomAttribute<ParamArrayAttribute>() != null)
-						tw.Write($"[{y.Name}...]");
+						tw.Write($"[{y.Name}...] ");
 					else
 						tw.Write($"{y.Name} ");
 				}
 
-				tw.WriteLine();
-
 				var helpAttr = x.GetCustomAttribute<HelpAttribute>();
 
 				if (helpAttr != null)
-					tw.WriteLine(helpAttr.Text);
+					tw.Write($":: {helpAttr.Text}");
+				tw.WriteLine();
 			}
 
-			tw.WriteLine("Commands:");
+			tw.WriteLine("COMMANDS");
+			tw.WriteLine("--------");
 
 			foreach(var x in type.GetMethods().Where(x => x.IsStatic))
 			{
@@ -76,21 +76,20 @@ namespace Gabbyz.Attribution
 				foreach (var y in x.GetParameters())
 				{
 					if (y.GetCustomAttribute<ParamArrayAttribute>() != null)
-						tw.Write($"[{y.Name}...]");
+						tw.Write($"[{y.Name}...] ");
 					else
 						tw.Write($"{y.Name} ");
 				}
 
-				tw.WriteLine();
-
 				if (helpAttr != null)
-					tw.WriteLine($"\t{helpAttr.Text}");
+					tw.Write($":: {helpAttr.Text}");
 
-
+				tw.WriteLine();
 			}
 
 			tw.WriteLine();
-			tw.WriteLine("Options:");
+			tw.WriteLine("OPTIONS");
+			tw.WriteLine("-------");
 			
 			foreach(var x in type.GetProperties())
 			{
@@ -102,26 +101,26 @@ namespace Gabbyz.Attribution
 
 				if (optionAttr.Long != null)
 				{
-					tw.Write("--{0} ", optionAttr.Long);
+					tw.Write($"--{optionAttr.Long} ");
 				}
 				if (optionAttr.Short != '\0')
 				{
-					tw.Write("-{0} ", optionAttr.Short);
+					tw.Write($"-{optionAttr.Short} ");
 				}
 
 				if (optionAttr.Flag)
 				{
-					tw.Write("(flag)");
+					tw.Write("(flag) ");
 				}
-
-				tw.WriteLine();
 
 				var helpAttr = x.GetCustomAttribute<HelpAttribute>();
 
 				if (helpAttr != null)
 				{
-					tw.WriteLine("\t{0}", helpAttr.Text);
+					tw.Write($":: {helpAttr.Text}");
 				}
+
+				tw.WriteLine();
 			}
 
 			foreach (var x in type.GetMethods().Where(x => x.IsStatic))
@@ -133,53 +132,35 @@ namespace Gabbyz.Attribution
 
 				if (optionAttr.Long != null)
 				{
-					tw.Write("--{0} ", optionAttr.Long);
+					tw.Write($"--{optionAttr.Long} ");
 				}
 				if (optionAttr.Short != '\0')
 				{
-					tw.Write("-{0} ", optionAttr.Short);
+					tw.Write($"-{optionAttr.Short} ");
 				}
 
 				var par = x.GetParameters();
 
 				if (optionAttr.Flag)
 				{
-					tw.Write("(flag)");
+					tw.Write("(flag) ");
 				}
 				else if (par.Length > 1)
 				{
 					foreach(var parameter in par)
 					{
-						tw.Write("{0} ", parameter.Name);
+						tw.Write($"{parameter.Name} ");
 					}
 				}
-
-				tw.WriteLine();
 
 				var helpAttr = x.GetCustomAttribute<HelpAttribute>();
 
 				if (helpAttr != null)
-				{
-					tw.WriteLine("\t{0}", helpAttr.Text);
-				}
+					tw.Write($":: {helpAttr.Text}");
+
+				tw.WriteLine();
 			}
 		}
-
-		class Subloader
-		{
-			public static string ParseString(string s) => s;
-			public static byte ParseByte(string s) => byte.Parse(s);
-			public static sbyte ParseSByte(string s) => sbyte.Parse(s);
-			public static ushort ParseUShort(string s) => ushort.Parse(s);
-			public static short ParseShort(string s) => short.Parse(s);
-			public static uint ParseUInt(string s) => uint.Parse(s);
-			public static int ParseInt(string s) => int.Parse(s);
-			public static ulong ParseULong(string s) => ulong.Parse(s);
-			public static long ParseLong(string s) => long.Parse(s);
-			public static float ParseFloat(string s) => float.Parse(s);
-			public static double ParseDouble(string s) => double.Parse(s);
-		}
-
 
 
 
@@ -307,16 +288,18 @@ namespace Gabbyz.Attribution
 
 			var commands = new Dictionary<string, MethodInfo>();
 
-			parsers.Add(typeof(string), typeof(Subloader).GetMethod("ParseString"));
-			parsers.Add(typeof(byte), typeof(Subloader).GetMethod("ParseByte"));
-			parsers.Add(typeof(sbyte), typeof(Subloader).GetMethod("ParseSByte"));
-			parsers.Add(typeof(ushort), typeof(Subloader).GetMethod("ParseUShort"));
-			parsers.Add(typeof(short), typeof(Subloader).GetMethod("ParseShort"));
-			parsers.Add(typeof(uint), typeof(Subloader).GetMethod("ParseUInt"));
-			parsers.Add(typeof(int), typeof(Subloader).GetMethod("ParseInt"));
-			parsers.Add(typeof(float), typeof(Subloader).GetMethod("ParseFloat"));
-			parsers.Add(typeof(double), typeof(Subloader).GetMethod("ParseDouble"));
-
+			parsers.Add(typeof(string), typeof(Parse).GetMethod("ParseString"));
+			parsers.Add(typeof(byte), typeof(Parse).GetMethod("ParseByte"));
+			parsers.Add(typeof(sbyte), typeof(Parse).GetMethod("ParseSByte"));
+			parsers.Add(typeof(ushort), typeof(Parse).GetMethod("ParseUShort"));
+			parsers.Add(typeof(short), typeof(Parse).GetMethod("ParseShort"));
+			parsers.Add(typeof(uint), typeof(Parse).GetMethod("ParseUInt"));
+			parsers.Add(typeof(int), typeof(Parse).GetMethod("ParseInt"));
+			parsers.Add(typeof(float), typeof(Parse).GetMethod("ParseFloat"));
+			parsers.Add(typeof(double), typeof(Parse).GetMethod("ParseDouble"));
+			parsers.Add(typeof(bool), typeof(Parse).GetMethod("ParseBool"));
+			parsers.Add(typeof(FileInfo), typeof(Parse).GetMethod("ParseFileInfo"));
+			parsers.Add(typeof(DirectoryInfo), typeof(Parse).GetMethod("ParseDirectoryInfo"));
 
 			foreach (var x in type.GetMethods().Where(x => x.IsStatic))
 			{
